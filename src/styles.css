@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #100e0c;
+  --color-dusk: #1c1612;
+  --color-panel: #241c16;
+  --color-sand: #e6c27a;
+  --color-copper: #c4492c;
+  --color-moon: #f3efe4;
+  --color-mist: #b3a89a;
+  --color-line: #3c332b;
+  --color-oasis: #1f7a68;
+  --font-display: "Amiri", "Noto Naskh Arabic", "Times New Roman", serif;
+  --font-sans: "Cairo", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--color-ink);
+    color: var(--color-moon);
+    font-family: var(--font-sans);
+  }
+}
+
+.game-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-ink);
+  color: var(--color-moon);
+  touch-action: none;
+  user-select: none;
+}
+
+.game-shell canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vignette {
+  background: radial-gradient(ellipse at center, transparent 50%, var(--color-ink) 100%);
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.title-scrim {
+  background: linear-gradient(to top, var(--color-ink) 0%, color-mix(in srgb, var(--color-ink) 70%, transparent) 34%, transparent 68%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vignette {
+    opacity: 0.3;
+  }
+}

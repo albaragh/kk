@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="ممالك الشفق">
+  <rect width="16" height="16" rx="3" fill="#100e0c"/>
+  <circle cx="8" cy="5.2" r="3.4" fill="#e6c27a"/>
+  <rect x="7" y="1.5" width="2" height="7.4" fill="#100e0c"/>
+  <rect x="1.6" y="11.2" width="3.1" height="3.4" fill="#c4492c"/>
+  <rect x="6.45" y="9.6" width="3.1" height="5" fill="#c4492c"/>
+  <rect x="11.3" y="11.2" width="3.1" height="3.4" fill="#c4492c"/>
+</svg>

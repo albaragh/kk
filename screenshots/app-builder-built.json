@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "ممالك الشفق — Kingdoms of Twilight",
+      "hasCanvas": false,
+      "bodyTextLen": 57,
+      "bodyTextHash": "74074a143a54b5cd27a692da96b6df40ac23a1dd4d13348b2355080a873bad2a",
+      "bodyTextPrefix": "عالم مفتوح ممالك الشفق القمر انشقّ. المدينة تنتظر أن تقف.",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "ممالك الشفق — Kingdoms of Twilight",
+      "hasCanvas": false,
+      "bodyTextLen": 57,
+      "bodyTextHash": "74074a143a54b5cd27a692da96b6df40ac23a1dd4d13348b2355080a873bad2a",
+      "bodyTextPrefix": "عالم مفتوح ممالك الشفق القمر انشقّ. المدينة تنتظر أن تقف.",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
