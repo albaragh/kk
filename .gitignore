@@ -147,3 +147,10 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Midnight Rush local / build
+.vercel/
+.grok/
+screenshots/
+artifacts/
+.node_modules.lock

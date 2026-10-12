@@ -1,0 +1,42 @@
+@import "@fontsource/cairo/arabic-400.css";
+@import "@fontsource/cairo/arabic-600.css";
+@import "@fontsource/cairo/arabic-700.css";
+@import "@fontsource/cairo/latin-400.css";
+@import "@fontsource/cairo/latin-700.css";
+@import "@fontsource/barlow-condensed/latin-500.css";
+@import "@fontsource/barlow-condensed/latin-700.css";
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #07080d;
+  --color-surface: #12141c;
+  --color-surface-2: #1b2030;
+  --color-fg: #f4efe6;
+  --color-muted: #9a9488;
+  --color-primary: #e8a317;
+  --color-primary-fg: #1a1203;
+  --color-accent: #2ec4b6;
+  --color-line: #2a3142;
+  --font-sans: "Cairo", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Cairo", sans-serif;
+  --radius-card: 1.25rem;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  #root {
+    height: 100%;
+  }
+}
