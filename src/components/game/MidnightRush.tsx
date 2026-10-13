@@ -41,6 +41,8 @@ export default function MidnightRush() {
     const blur = () => {
       sim.keys.clear();
       sim.touch.steer = 0;
+      sim.touch.left = false;
+      sim.touch.right = false;
       sim.touch.throttle = 0;
       sim.touch.brake = 0;
       sim.touch.handbrake = false;

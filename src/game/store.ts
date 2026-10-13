@@ -10,7 +10,7 @@ import {
 } from "./cars";
 import { enterDrive, enterGarage, enterRace, enterTitle, refreshPlayer, sim } from "./sim";
 import type { Lang, RaceResult, Screen, Settings, Upgrades, Visual } from "./types";
-import { CHAMPIONSHIP } from "./world";
+import { CHAMPIONSHIP, RACES } from "./world";
 
 const KEY = "midnight-rush-v1";
 
@@ -68,13 +68,88 @@ function persist(data: SaveData) {
   }
 }
 
+function num(v: unknown, fallback: number, min: number, max: number) {
+  const n = typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function level(v: unknown, max: number) {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.floor(v) : 0;
+  return Math.min(max, Math.max(0, n));
+}
+
 function read(): SaveData {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fresh();
     const parsed = JSON.parse(raw) as Partial<SaveData>;
-    if (parsed.version !== 1 || !parsed.selected || !Array.isArray(parsed.owned)) return fresh();
-    return { ...fresh(), ...parsed, settings: { ...fresh().settings, ...parsed.settings } };
+    if (parsed.version !== 1) return fresh();
+    const base = fresh();
+    const known = new Set(CARS.map((c) => c.id));
+    const ownedRaw = Array.isArray(parsed.owned)
+      ? parsed.owned.filter((id): id is string => typeof id === "string" && known.has(id))
+      : [];
+    const owned = ownedRaw.length > 0 ? ownedRaw : [base.selected];
+    const selected = typeof parsed.selected === "string" && owned.includes(parsed.selected) ? parsed.selected : owned[0]!;
+    if (!owned.includes(base.selected)) owned.unshift(base.selected);
+    const upgrades: Record<string, Upgrades> = {};
+    const visuals: Record<string, Visual> = {};
+    for (const id of owned) {
+      const rawU = parsed.upgrades?.[id];
+      upgrades[id] = {
+        engine: level(rawU?.engine, UPGRADE_COST.engine.length),
+        brakes: level(rawU?.brakes, UPGRADE_COST.brakes.length),
+        suspension: level(rawU?.suspension, UPGRADE_COST.suspension.length),
+        gearbox: level(rawU?.gearbox, UPGRADE_COST.gearbox.length),
+        turbo: level(rawU?.turbo, UPGRADE_COST.turbo.length),
+      };
+      const car = getCar(id);
+      const dv = defaultVisual(car);
+      const vis = parsed.visuals?.[id];
+      visuals[id] = {
+        paint: typeof vis?.paint === "string" ? vis.paint : dv.paint,
+        wheels: level(vis?.wheels, 2),
+        spoiler: typeof vis?.spoiler === "boolean" ? vis.spoiler : dv.spoiler,
+        ride: num(vis?.ride, 0, -0.08, 0.16),
+        glow: typeof vis?.glow === "string" ? vis.glow : dv.glow,
+        bumper: num(vis?.bumper, 0, 0, 1),
+      };
+    }
+    const raceIds = new Set(RACES.map((r) => r.id));
+    const best: Record<string, number> = {};
+    if (parsed.best && typeof parsed.best === "object") {
+      for (const [id, value] of Object.entries(parsed.best)) {
+        if (raceIds.has(id) && typeof value === "number" && Number.isFinite(value) && value > 0) best[id] = value;
+      }
+    }
+    const incoming: Partial<Settings> = parsed.settings ?? {};
+    const settings: Settings = {
+      ...base.settings,
+      quality: incoming.quality === "low" || incoming.quality === "med" || incoming.quality === "high" ? incoming.quality : base.settings.quality,
+      camera: incoming.camera === "hood" || incoming.camera === "bumper" || incoming.camera === "chase" ? incoming.camera : base.settings.camera,
+      time: incoming.time === "dawn" || incoming.time === "day" || incoming.time === "dusk" || incoming.time === "night" ? incoming.time : base.settings.time,
+      volume: num(incoming.volume, base.settings.volume, 0, 1),
+      assist: num(incoming.assist, base.settings.assist, 0, 1),
+      rain: typeof incoming.rain === "boolean" ? incoming.rain : base.settings.rain,
+      cycle: typeof incoming.cycle === "boolean" ? incoming.cycle : base.settings.cycle,
+      touch: typeof incoming.touch === "boolean" ? incoming.touch : base.settings.touch,
+      tilt: typeof incoming.tilt === "boolean" ? incoming.tilt : base.settings.tilt,
+    };
+    return {
+      version: 1,
+      lang: parsed.lang === "en" ? "en" : "ar",
+      credits: num(parsed.credits, base.credits, 0, 1e9),
+      owned,
+      selected,
+      upgrades,
+      visuals,
+      best,
+      wins: Math.floor(num(parsed.wins, 0, 0, 1e6)),
+      races: Math.floor(num(parsed.races, 0, 0, 1e6)),
+      distance: num(parsed.distance, 0, 0, 1e9),
+      championshipRound: Math.floor(num(parsed.championshipRound, 0, 0, CHAMPIONSHIP.length)),
+      settings,
+    };
   } catch {
     return fresh();
   }
@@ -263,7 +338,9 @@ export const useGame = create<GameStore>((set, get) => ({
     enterDrive();
   },
   startGarage: () => {
-    set({ screen: "garage", notice: "" });
+    const racing = !!(sim.race && !sim.race.reported);
+    const fromDrive = get().screen === "pause" || get().screen === "drive" || get().returnTo === "drive";
+    set({ screen: "garage", notice: "", returnTo: racing ? "title" : fromDrive ? "drive" : "title" });
     enterGarage();
   },
   startRace: (id, championship = false) => {
@@ -271,12 +348,18 @@ export const useGame = create<GameStore>((set, get) => ({
     enterRace(id, championship);
   },
   startChampionship: () => {
-    const round = Math.min(get().championshipRound, CHAMPIONSHIP.length - 1);
+    const round = get().championshipRound;
+    if (round >= CHAMPIONSHIP.length) {
+      const id = CHAMPIONSHIP[CHAMPIONSHIP.length - 1] ?? CHAMPIONSHIP[0]!;
+      get().startRace(id, false);
+      return;
+    }
     const id = CHAMPIONSHIP[round] ?? CHAMPIONSHIP[0]!;
     get().startRace(id, true);
   },
   pause: () => {
     if (get().screen !== "drive") return;
+    flushDistance();
     sim.mode = "pause";
     set({ screen: "pause", returnTo: "drive" });
   },
@@ -286,15 +369,14 @@ export const useGame = create<GameStore>((set, get) => ({
     set({ screen: "drive" });
   },
   finishRace: (result) => {
+    flushDistance();
     const s = get();
     const prev = s.best[result.raceId];
     const value = result.higherBetter ? result.score : result.time;
+    const eligible = !result.busted && value > 0;
     const better =
-      prev == null
-        ? true
-        : result.higherBetter
-          ? value > prev
-          : value < prev && value > 0;
+      eligible &&
+      (prev == null || (result.higherBetter ? value > prev : value < prev));
     const best = better ? { ...s.best, [result.raceId]: value } : s.best;
     let round = s.championshipRound;
     if (result.championship && result.place <= 3 && !result.busted) {
@@ -314,10 +396,20 @@ export const useGame = create<GameStore>((set, get) => ({
     persist(snapshot(get()));
   },
   backTitle: () => {
+    flushDistance();
     set({ screen: "title" });
     enterTitle();
   },
 }));
+
+function flushDistance() {
+  if (sim.distancePending <= 0) return;
+  const meters = sim.distancePending;
+  sim.distancePending = 0;
+  const distance = useGame.getState().distance + meters;
+  useGame.setState({ distance });
+  persist(snapshot(useGame.getState()));
+}
 
 bridge.finish = (result) => useGame.getState().finishRace(result);
 bridge.getSetup = () => {
@@ -332,6 +424,9 @@ bridge.getSetup = () => {
   };
 };
 bridge.addDistance = (meters) => {
-  useGame.setState({ distance: useGame.getState().distance + meters });
+  if (!(meters > 0)) return;
+  const distance = useGame.getState().distance + meters;
+  useGame.setState({ distance });
+  persist(snapshot(useGame.getState()));
 };
 bridge.bump = () => useGame.setState((s) => ({ epoch: s.epoch + 1 }));

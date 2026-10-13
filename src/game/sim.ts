@@ -135,7 +135,7 @@ function createSim() {
   qaKeys: null as Set<string> | null,
   qaSteer: null as number | null,
   tiltSteer: 0,
-  touch: { steer: 0, throttle: 0, brake: 0, handbrake: false, nitro: false },
+  touch: { steer: 0, throttle: 0, brake: 0, handbrake: false, nitro: false, left: false, right: false },
   pad: { steer: 0, throttle: 0, brake: 0, handbrake: false, nitro: false },
   race: null as RaceRun | null,
   shake: 0,
@@ -158,6 +158,8 @@ type Sim = ReturnType<typeof createSim>;
 const host = globalThis as typeof globalThis & { __MIDNIGHT_RUSH_SIM__?: Sim };
 export const sim: Sim = host.__MIDNIGHT_RUSH_SIM__ ?? (host.__MIDNIGHT_RUSH_SIM__ = createSim());
 if (sim.driftBank == null) sim.driftBank = 0;
+sim.touch.left ??= false;
+sim.touch.right ??= false;
 
 function player() {
   return sim.bodies.player!;
@@ -440,7 +442,10 @@ function playerInput(): VehicleInput {
     if (code === "ShiftLeft" || code === "ShiftRight") nitro = true;
   }
   if (!sim.qaKeys) {
-    steer = clamp(steer + sim.pad.steer + sim.touch.steer + sim.tiltSteer, -1, 1);
+    const touchSteer = sim.touch.left || sim.touch.right
+      ? (sim.touch.left ? 1 : 0) - (sim.touch.right ? 1 : 0)
+      : sim.touch.steer;
+    steer = clamp(steer + sim.pad.steer + touchSteer + sim.tiltSteer, -1, 1);
     throttle = Math.max(throttle, sim.pad.throttle, sim.touch.throttle);
     brake = Math.max(brake, sim.pad.brake, sim.touch.brake);
     handbrake = handbrake || sim.pad.handbrake || sim.touch.handbrake;

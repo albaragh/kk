@@ -105,6 +105,7 @@ const rows = {
   eventHighway: ["انطلاقة الطريق", "Highway sprint"],
   eventPolice: ["مطاردة", "Police chase"],
   champHint: ["المراكز الثلاثة الأولى تفتح الجولة التالية بمكافأة إضافية", "Top 3 opens the next round with bonus pay"],
+  champDone: ["اكتملت البطولة. الإعادة بلا مكافأة السلسلة", "Championship complete. Replay has no series bonus"],
   assistHint: ["يزيد تماسك الإطارات دون أن يلغي الانزلاق", "Adds tire grip without killing the slide"],
   kmh: ["كم/س", "km/h"],
   gear: ["غيار", "Gear"],

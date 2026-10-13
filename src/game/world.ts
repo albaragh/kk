@@ -728,10 +728,27 @@ export function collideWorld(body: HitBody): number {
   }
   const g = sampleGround(body.x, body.z);
   if (!g.onRoad && inWater(body.x, body.z)) {
-    body.x = -352;
-    body.vx *= 0.4;
-    body.vz *= 0.4;
-    impact = Math.max(impact, 5);
+    let best = 1e9;
+    let rx = -352;
+    let rz = body.z;
+    for (const s of nearbySegs(body.x, body.z)) {
+      const hit = projectSeg(body.x, body.z, s);
+      if (hit.d < best) {
+        best = hit.d;
+        rx = hit.cx;
+        rz = hit.cz;
+      }
+    }
+    if (best > 80) {
+      rx = -352;
+      rz = Math.min(220, Math.max(-70, body.z));
+    }
+    body.x = rx;
+    body.z = rz;
+    body.vx *= 0.15;
+    body.vz *= 0.15;
+    if (body.vx < 0) body.vx = 0;
+    impact = Math.max(impact, 8);
   }
   for (const s of nearbySegs(body.x, body.z)) {
     if (!s.barrier) continue;

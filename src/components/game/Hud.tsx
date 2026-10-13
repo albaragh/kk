@@ -46,6 +46,7 @@ export function Hud() {
   const mapRef = useRef<HTMLCanvasElement>(null);
   const clockRef = useRef<HTMLParagraphElement>(null);
   const lapRef = useRef<HTMLParagraphElement>(null);
+  const wrongRef = useRef<HTMLParagraphElement>(null);
   const [board, setBoard] = useState<ReturnType<typeof standings>>([]);
   const [hint, setHint] = useState(true);
   const coarse = settings.touch || (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches);
@@ -80,6 +81,7 @@ export function Hud() {
               ? t(lang, "go")
               : formatTime(raceNow.elapsed);
       }
+      if (wrongRef.current) wrongRef.current.style.display = sim.wrongWay ? "block" : "none";
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
@@ -136,11 +138,13 @@ export function Hud() {
         {t(lang, "pause")}
       </button>
 
-      {sim.wrongWay ? (
-        <p className="absolute start-1/2 top-24 -translate-x-1/2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-fg">
-          {t(lang, "wrongWay")}
-        </p>
-      ) : null}
+      <p
+        ref={wrongRef}
+        style={{ display: "none" }}
+        className="absolute left-1/2 top-24 -translate-x-1/2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-fg"
+      >
+        {t(lang, "wrongWay")}
+      </p>
 
       {race && race.def.gates.length > 0 ? (
         <div ref={arrowRef} className="absolute top-16 left-1/2 h-8 w-8 -translate-x-1/2">
@@ -176,14 +180,22 @@ export function Hud() {
             <Hold
               label="A"
               className="h-16 w-16 rounded-card border border-line bg-surface/85 text-lg text-fg"
-              onDown={() => { sim.touch.steer = Math.min(1, sim.touch.steer + 1); }}
-              onUp={() => { sim.touch.steer = 0; }}
+              onDown={() => {
+                sim.touch.left = true;
+              }}
+              onUp={() => {
+                sim.touch.left = false;
+              }}
             />
             <Hold
               label="D"
               className="h-16 w-16 rounded-card border border-line bg-surface/85 text-lg text-fg"
-              onDown={() => { sim.touch.steer = Math.max(-1, sim.touch.steer - 1); }}
-              onUp={() => { sim.touch.steer = 0; }}
+              onDown={() => {
+                sim.touch.right = true;
+              }}
+              onUp={() => {
+                sim.touch.right = false;
+              }}
             />
           </div>
           <div className="flex items-end gap-2">
@@ -255,7 +267,7 @@ function drawMap(canvas: HTMLCanvasElement, x: number, z: number, yaw: number) {
   const sy = pz(z);
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.rotate(yaw);
+  ctx.rotate(-yaw);
   ctx.fillStyle = "#e8a317";
   ctx.beginPath();
   ctx.moveTo(0, -7);

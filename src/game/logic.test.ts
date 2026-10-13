@@ -72,6 +72,91 @@ test("engine upgrade increases power", () => {
   assert.ok(tuned.nitroMax > 0);
 });
 
+test("mass slows acceleration and water returns the car to a road", () => {
+  const input = { steer: 0, throttle: 1, brake: 0, handbrake: false, nitro: false };
+  const light = createVehicleState(0, 0, 0);
+  const heavy = createVehicleState(0, 0, 0);
+  const base = effectiveStats(getCar("afaq-sedan"), defaultUpgrades());
+  const lightStats = { ...base, mass: 1000 };
+  const heavyStats = { ...base, mass: 2300 };
+  for (let i = 0; i < 40; i++) {
+    stepVehicle(light, input, lightStats, 1 / 60, "asphalt", 0, 0, 0);
+    stepVehicle(heavy, input, heavyStats, 1 / 60, "asphalt", 0, 0, 0);
+  }
+  assert.ok(light.speed > heavy.speed + 0.4, `mass ignored: light ${light.speed} heavy ${heavy.speed}`);
+
+  const wet = { x: -430, z: 20, vx: -25, vz: 4 };
+  collideWorld(wet);
+  const ground = sampleGround(wet.x, wet.z);
+  assert.equal(ground.onRoad || wet.x >= -358, true, `still lost in the sea at ${wet.x},${wet.z}`);
+  const parked = wet.x;
+  collideWorld(wet);
+  assert.ok(Math.abs(wet.x - parked) < 6, `water still teleports the car (${parked} -> ${wet.x})`);
+});
+
+test("a bust is not a record and a corrupt save cannot break the garage", async () => {
+  const mem = new Map<string, string>();
+  Object.assign(globalThis, {
+    document: { documentElement: { lang: "ar", dir: "rtl" } },
+    localStorage: {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => mem.set(k, String(v)),
+      removeItem: (k: string) => mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    },
+  });
+  (globalThis as { window?: unknown }).window = {
+    matchMedia: () => ({ matches: false }),
+    localStorage: (globalThis as { localStorage?: unknown }).localStorage,
+  };
+  mem.set(
+    "midnight-rush-v1",
+    JSON.stringify({
+      version: 1,
+      lang: "nope",
+      credits: -50,
+      selected: "not-a-car",
+      owned: ["not-a-car", "barq"],
+      upgrades: { barq: { engine: 99, brakes: -3, turbo: 1.2 } },
+      settings: { quality: "ultra", rain: "yes" },
+      championshipRound: 40,
+      screen: "drive",
+    }),
+  );
+  const { useGame } = await import("./store.ts");
+  useGame.getState().hydrate();
+  const s = useGame.getState();
+  assert.equal(s.lang, "ar");
+  assert.equal(s.credits, 0);
+  assert.equal(s.selected, "barq");
+  assert.equal(s.owned.includes("afaq-sedan"), true);
+  assert.equal(s.owned.includes("not-a-car"), false);
+  assert.equal(s.upgrades.barq?.engine, 5);
+  assert.equal(s.upgrades.barq?.brakes, 0);
+  assert.equal(s.settings.quality, "high");
+  assert.equal(s.settings.rain, false);
+  assert.equal(s.championshipRound, 4);
+  assert.equal(s.screen, "title");
+  useGame.getState().finishRace({
+    raceId: "police-heat",
+    place: 3,
+    total: 3,
+    time: 12,
+    score: 12,
+    reward: -1500,
+    higherBetter: false,
+    championship: false,
+    escaped: false,
+    busted: true,
+    record: false,
+  });
+  assert.equal(useGame.getState().best["police-heat"], undefined);
+  assert.equal(useGame.getState().lastResult?.record, false);
+  assert.ok(useGame.getState().credits >= 0);
+});
+
 test("a street race leaves the grid after the countdown and can finish", async () => {
   const mem = new Map<string, string>();
   Object.assign(globalThis, {

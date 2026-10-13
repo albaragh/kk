@@ -124,16 +124,17 @@ export function stepVehicle(
 
   const boosting = input.nitro && body.nitro > 0 && input.throttle > 0.15 && stats.nitroMax > 0;
   if (boosting) body.nitro = Math.max(0, body.nitro - dt);
-  const power = stats.power * (boosting ? stats.nitroPower : 1);
-  const drag = power / (stats.top * stats.top);
+  const massMul = clamp(1480 / Math.max(800, stats.mass), 0.62, 1.18);
+  const power = stats.power * (boosting ? stats.nitroPower : 1) * massMul;
+  const drag = (stats.power * (boosting ? stats.nitroPower : 1)) / (stats.top * stats.top);
 
   if (input.brake > 0.05 && vLong > 0.5) {
-    vLong -= input.brake * stats.brake * dt;
+    vLong -= input.brake * stats.brake * massMul * dt;
     if (vLong < 0) vLong = 0;
   } else if (input.throttle > 0.05) {
     vLong += input.throttle * power * dt;
   } else if (input.brake > 0.05 && !input.handbrake) {
-    vLong -= input.brake * stats.brake * 0.42 * dt;
+    vLong -= input.brake * stats.brake * 0.42 * massMul * dt;
   }
 
   vLong -= vLong * Math.abs(vLong) * drag * dt;

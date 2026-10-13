@@ -223,6 +223,7 @@ function Races() {
   const round = useGame((s) => s.championshipRound);
   const startRace = useGame((s) => s.startRace);
   const startChampionship = useGame((s) => s.startChampionship);
+  const done = round >= CHAMPIONSHIP.length;
   const nextId = CHAMPIONSHIP[Math.min(round, CHAMPIONSHIP.length - 1)]!;
   const next = getRace(nextId);
   return (
@@ -230,8 +231,12 @@ function Races() {
       <BackBar title={t(lang, "races")} />
       <button type="button" onClick={tap(startChampionship)} className="mb-4 min-h-11 w-full rounded-card bg-primary px-4 py-3 text-start text-primary-fg">
         <span className="block font-semibold">{t(lang, "championship")}</span>
-        <span className="text-sm">{t(lang, "roundDone")} {Math.min(round, CHAMPIONSHIP.length)}/{CHAMPIONSHIP.length} · {lang === "ar" ? next.nameAr : next.nameEn}</span>
-        <span className="mt-1 block text-xs">{t(lang, "champHint")}</span>
+        <span className="text-sm">
+          {done
+            ? t(lang, "champDone")
+            : `${t(lang, "roundDone")} ${round}/${CHAMPIONSHIP.length} · ${lang === "ar" ? next.nameAr : next.nameEn}`}
+        </span>
+        <span className="mt-1 block text-xs">{done ? "" : t(lang, "champHint")}</span>
       </button>
       <div className="grid gap-2">
         {RACES.map((race) => {
