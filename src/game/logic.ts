@@ -5,7 +5,7 @@ export type QuestProgress = { status: "locked" | "active" | "done"; step: number
 
 export type GameEvent =
   | { type: "talk"; npc: string }
-  | { type: "defeat"; tag: string }
+  | { type: "defeat"; tag: string; id?: string }
   | { type: "interact"; tag: string; id: string }
   | { type: "puzzle"; id: string }
   | { type: "parry" }
@@ -73,7 +73,13 @@ export function applyEvent(
       if (!obj) break;
       if (event.type === "defeat" && obj.type === "defeat" && obj.tag === event.tag) {
         const k = objectiveKey(obj);
-        q.counts[k] = (q.counts[k] ?? 0) + 1;
+        if (event.id) {
+          const idKey = `${k}:${event.id}`;
+          if (!q.counts[idKey]) {
+            q.counts[idKey] = 1;
+            q.counts[k] = (q.counts[k] ?? 0) + 1;
+          }
+        } else q.counts[k] = (q.counts[k] ?? 0) + 1;
       } else if (event.type === "interact" && obj.type === "interact" && obj.tag === event.tag) {
         const k = objectiveKey(obj);
         const idKey = `${k}:${event.id}`;

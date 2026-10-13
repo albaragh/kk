@@ -56,6 +56,10 @@
   background: linear-gradient(to top, var(--color-ink) 0%, color-mix(in srgb, var(--color-ink) 70%, transparent) 34%, transparent 68%);
 }
 
+.end-scrim {
+  background: linear-gradient(to top, var(--color-ink) 0%, color-mix(in srgb, var(--color-ink) 78%, transparent) 42%, transparent 78%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vignette {
     opacity: 0.3;

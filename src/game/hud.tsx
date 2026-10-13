@@ -15,7 +15,7 @@ export function Hud({ sim }: { sim: GameSim }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-10 text-moon" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="vignette pointer-events-none absolute inset-0" />
-      {sim.phase === "play" || sim.phase === "dead" || sim.phase === "ending" ? <PlayChrome sim={sim} t={t} /> : null}
+      {sim.phase === "play" || sim.phase === "dead" || sim.phase === "ending" ? <PlayChrome sim={sim} t={t} showTouch={showTouch} /> : null}
       {sim.phase === "title" ? <Title sim={sim} t={t} /> : null}
       {sim.phase === "cinematic" ? <Cinema sim={sim} t={t} /> : null}
       {sim.phase === "dead" ? <Dead sim={sim} t={t} /> : null}
@@ -24,7 +24,7 @@ export function Hud({ sim }: { sim: GameSim }) {
       {sim.note ? <Note sim={sim} t={t} /> : null}
       {sim.panel !== "none" ? <Panels sim={sim} t={t} /> : null}
       <Toasts sim={sim} t={t} />
-      {showTouch && sim.phase === "play" && sim.panel === "none" && !sim.dialogue ? <Touch sim={sim} t={t} /> : null}
+      {showTouch && sim.phase === "play" && sim.panel === "none" && !sim.dialogue && !sim.note && !sim.endingOffer ? <Touch sim={sim} t={t} /> : null}
     </div>
   );
 }
@@ -50,7 +50,7 @@ function Title({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string }
         </button>
       </div>
       <p className="mt-4 text-sm text-mist">
-        {t("WASD حركة · الفأرة اليمين كاميرا · J هجوم · C مراوغة · F صد · E تفاعل", "WASD move · right mouse camera · J attack · C dodge · F parry · E interact")}
+        {t("WASD حركة · اسحب الفأرة للكاميرا · نقرة للهجوم · J هجوم · C مراوغة · F صد · E تفاعل", "WASD move · drag mouse to look · click to attack · J attack · C dodge · F parry · E interact")}
       </p>
     </div>
   );
@@ -67,7 +67,7 @@ function Cinema({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string 
   );
 }
 
-function PlayChrome({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string }) {
+function PlayChrome({ sim, t, showTouch }: { sim: GameSim; t: (a: string, b: string) => string; showTouch: boolean }) {
   const p = sim.player;
   const quest = sim.activeQuestText();
   const hp = Math.max(0, p.hp / p.maxHp);
@@ -88,6 +88,7 @@ function PlayChrome({ sim, t }: { sim: GameSim; t: (a: string, b: string) => str
           </div>
           <p className="mt-1 text-xs text-mist" dir="ltr">
             {Math.ceil(p.hp)} / {p.maxHp} · {t("شظايا", "motes")} {sim.motes}
+            {sim.crystalCount() > 0 ? ` · ${t("بلّورات", "crystals")} ${sim.crystalCount()}/5` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +106,7 @@ function PlayChrome({ sim, t }: { sim: GameSim; t: (a: string, b: string) => str
         </div>
       ) : null}
       {sim.hintAr ? (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-full bg-dusk/80 px-4 py-2 text-sm">
+        <div className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-dusk/80 px-4 py-2 text-sm ${showTouch ? "bottom-44" : "bottom-28"}`}>
           {sim.lang() === "ar" ? sim.hintAr : sim.hintEn}
         </div>
       ) : null}
@@ -121,9 +122,6 @@ function PlayChrome({ sim, t }: { sim: GameSim; t: (a: string, b: string) => str
             </div>
           </div>
         </div>
-      ) : null}
-      {sim.crystalCount() > 0 ? (
-        <p className="absolute top-4 left-1/2 -translate-x-1/2 text-sm text-sand">{t("بلّورات", "Crystals")} {sim.crystalCount()}/5</p>
       ) : null}
     </>
   );
@@ -243,8 +241,8 @@ function SettingsBody({ sim, t }: { sim: GameSim; t: (a: string, b: string) => s
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div className="flex gap-2">
-        <button className="min-h-11 flex-1 rounded-xl bg-sand text-ink" onClick={() => sim.setLang("ar")}>العربية</button>
-        <button className="min-h-11 flex-1 rounded-xl border border-line" onClick={() => sim.setLang("en")}>English</button>
+        <button className={`min-h-11 flex-1 rounded-xl ${s.lang === "ar" ? "bg-sand text-ink" : "border border-line"}`} onClick={() => sim.setLang("ar")}>العربية</button>
+        <button className={`min-h-11 flex-1 rounded-xl ${s.lang === "en" ? "bg-sand text-ink" : "border border-line"}`} onClick={() => sim.setLang("en")}>English</button>
       </div>
       <p>{t("الجودة", "Quality")}</p>
       <div className="flex gap-2">
@@ -260,7 +258,7 @@ function SettingsBody({ sim, t }: { sim: GameSim; t: (a: string, b: string) => s
       <button className="min-h-11 rounded-xl border border-line" onClick={() => { s.touch = !s.touch; sim.saveSettings(); }}>
         {t("أزرار اللمس", "Touch buttons")}: {s.touch ? t("ظاهرة", "On") : t("مخفية", "Off")}
       </button>
-      <p className="text-mist">{t("تغيير الجودة يظهر كاملًا بعد إعادة الدخول للمشهد.", "Quality applies fully on the next scene entry.")}</p>
+      <p className="text-mist">{t("الجودة المنخفضة أخف، والعالية تُظهر الظلال.", "Low is lighter. High turns shadows on.")}</p>
     </div>
   );
 }
@@ -315,7 +313,7 @@ function SkillBody({ sim, t }: { sim: GameSim; t: (a: string, b: string) => stri
 }
 
 function QuestBody({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string }) {
-  const list = QUESTS.filter((q) => sim.quests[q.id]?.status !== "locked" || !q.hidden);
+  const list = QUESTS.filter((q) => sim.quests[q.id]?.status !== "locked");
   return (
     <div className="flex flex-col gap-3">
       {list.map((q) => {
@@ -373,7 +371,7 @@ function Dead({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string })
 function Ending({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string }) {
   const seal = sim.ending === "seal";
   return (
-    <div className="absolute inset-0 flex items-end bg-linear-to-t from-ink via-ink/80 to-transparent p-6 md:p-12">
+    <div className="absolute inset-0 flex items-end end-scrim p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-12">
       <div className="max-w-2xl">
         <p className="text-sand">{t("النهاية", "Ending")}</p>
         <h2 className="font-display text-4xl md:text-6xl">{seal ? t("ختم القمر", "The Moon Sealed") : t("شفق مشترك", "A Shared Twilight")}</h2>
@@ -401,11 +399,12 @@ function Toasts({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string 
 
 function Touch({ sim, t }: { sim: GameSim; t: (a: string, b: string) => string }) {
   return (
-    <div className="absolute inset-0" data-ui>
-      <Joystick sim={sim} />
-      <div className="pointer-events-auto absolute bottom-6 left-4 grid grid-cols-3 gap-2">
+    <div className="pointer-events-none absolute inset-0">
+      <StickZone sim={sim} />
+      <LookZone sim={sim} />
+      <div className="pointer-events-auto absolute right-3 bottom-[max(1.25rem,env(safe-area-inset-bottom))] grid grid-cols-3 gap-2">
         <TouchBtn label={t("قفز", "Jump")} onPress={() => { sim.holdJump = true; sim.tap("jump"); }} onRelease={() => { sim.holdJump = false; }} />
-        <TouchBtn label={t("هجوم", "Attack")} onPress={() => sim.tap("attack")} />
+        <TouchBtn label={t("هجوم", "Atk")} onPress={() => sim.tap("attack")} />
         <TouchBtn label={t("ثقيل", "Heavy")} onPress={() => sim.tap("heavy")} />
         <TouchBtn label={t("مراوغة", "Dodge")} onPress={() => sim.tap("dodge")} />
         <TouchBtn label={t("صد", "Parry")} onPress={() => sim.tap("parry")} />
@@ -431,7 +430,7 @@ function TouchBtn({ label, onPress, onRelease }: { label: string; onPress: () =>
   );
 }
 
-function Joystick({ sim }: { sim: GameSim }) {
+function StickZone({ sim }: { sim: GameSim }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -440,12 +439,7 @@ function Joystick({ sim }: { sim: GameSim }) {
     let ox = 0;
     let oy = 0;
     const start = (e: PointerEvent) => {
-      if (e.clientX > window.innerWidth * 0.45) {
-        id = e.pointerId;
-        ox = e.clientX;
-        oy = e.clientY;
-        return;
-      }
+      if ((e.target as HTMLElement).closest("button")) return;
       id = e.pointerId;
       ox = e.clientX;
       oy = e.clientY;
@@ -453,16 +447,8 @@ function Joystick({ sim }: { sim: GameSim }) {
     };
     const move = (e: PointerEvent) => {
       if (id !== e.pointerId) return;
-      const dx = e.clientX - ox;
-      const dy = e.clientY - oy;
-      if (ox > window.innerWidth * 0.45) {
-        sim.addLook(dx * 0.9, dy * 0.7);
-        ox = e.clientX;
-        oy = e.clientY;
-        return;
-      }
-      const x = Math.max(-1, Math.min(1, dx / 48));
-      const y = Math.max(-1, Math.min(1, -dy / 48));
+      const x = Math.max(-1, Math.min(1, (e.clientX - ox) / 48));
+      const y = Math.max(-1, Math.min(1, -(e.clientY - oy) / 48));
       sim.stick.x = x;
       sim.stick.y = y;
     };
@@ -473,13 +459,54 @@ function Joystick({ sim }: { sim: GameSim }) {
       sim.stick.y = 0;
     };
     el.addEventListener("pointerdown", start);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
     return () => {
       el.removeEventListener("pointerdown", start);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", end);
+      el.removeEventListener("pointercancel", end);
     };
   }, [sim]);
-  return <div ref={ref} className="pointer-events-auto absolute inset-0" />;
+  return <div ref={ref} className="pointer-events-auto absolute bottom-0 left-0 h-[46%] w-[42%]" />;
+}
+
+function LookZone({ sim }: { sim: GameSim }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let id: number | null = null;
+    let lx = 0;
+    let ly = 0;
+    const start = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("button")) return;
+      id = e.pointerId;
+      lx = e.clientX;
+      ly = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    };
+    const move = (e: PointerEvent) => {
+      if (id !== e.pointerId) return;
+      sim.addLook((e.clientX - lx) * 0.85, (e.clientY - ly) * 0.7);
+      lx = e.clientX;
+      ly = e.clientY;
+    };
+    const end = (e: PointerEvent) => {
+      if (id !== e.pointerId) return;
+      id = null;
+    };
+    el.addEventListener("pointerdown", start);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    return () => {
+      el.removeEventListener("pointerdown", start);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", end);
+      el.removeEventListener("pointercancel", end);
+    };
+  }, [sim]);
+  return <div ref={ref} className="pointer-events-auto absolute top-28 right-0 bottom-0 w-[58%]" />;
 }

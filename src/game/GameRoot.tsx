@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { GameSim } from "./sim";
 import { Scene } from "./scene";
@@ -6,6 +6,16 @@ import { Hud } from "./hud";
 
 export function GameRoot() {
   const sim = useMemo(() => new GameSim(), []);
+  const [quality, setQuality] = useState(sim.settings.quality);
+  useEffect(() => {
+    const off = sim.subscribe(() => {
+      const next = sim.settings.quality;
+      setQuality((prev) => (prev === next ? prev : next));
+    });
+    return () => {
+      off();
+    };
+  }, [sim]);
   useEffect(() => {
     const keys = sim.keys;
     const down = (e: KeyboardEvent) => {
@@ -80,8 +90,8 @@ export function GameRoot() {
     };
   }, [sim]);
 
-  const high = sim.settings.quality === "high";
-  const low = sim.settings.quality === "low";
+  const high = quality === "high";
+  const low = quality === "low";
   return (
     <div className="game-shell">
       <Canvas

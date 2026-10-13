@@ -35,7 +35,19 @@ describe("quests", () => {
     assert.equal(quests.q_market.status, "active");
   });
 
-  it("market quest needs three distinct raider defeats", () => {
+  it("counts each defeated foe once when an id is given", () => {
+    const quests = blankQuests();
+    applyEvent(quests, { type: "talk", npc: "layla" }, {}, []);
+    applyEvent(quests, { type: "defeat", tag: "market", id: "m1" }, {}, []);
+    applyEvent(quests, { type: "defeat", tag: "market", id: "m1" }, {}, []);
+    assert.equal(quests.q_market.counts["defeat:market"], 1);
+    applyEvent(quests, { type: "defeat", tag: "market", id: "m2" }, {}, []);
+    const done = applyEvent(quests, { type: "defeat", tag: "market", id: "m3" }, {}, []);
+    assert.equal(quests.q_market.status, "done");
+    assert.ok(done.started.includes("q_well"));
+  });
+
+  it("market quest needs three raider defeats", () => {
     const quests = blankQuests();
     applyEvent(quests, { type: "talk", npc: "layla" }, {}, []);
     applyEvent(quests, { type: "defeat", tag: "market" }, {}, []);

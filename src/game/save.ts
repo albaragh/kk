@@ -34,6 +34,7 @@ export type SaveData = {
   parries: number;
   play: number;
   hasGlider: boolean;
+  ending?: "none" | "seal" | "share";
 };
 
 export type Settings = {

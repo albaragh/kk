@@ -186,6 +186,7 @@ export class GameSim {
   private ver = 0;
   private listeners = new Set<() => void>();
   private sealWarned = 0;
+  private burn = 0;
   audio = new AudioBus();
   attract = 0;
 
@@ -328,8 +329,9 @@ export class GameSim {
     this.audio.unlock();
     this.newGame();
     this.applySave(data);
-    this.phase = "play";
+    this.phase = this.ending === "none" ? "play" : "ending";
     this.panel = "none";
+    this.reconcileQuests();
     this.poke(true);
   }
 
@@ -362,6 +364,7 @@ export class GameSim {
     this.parries = d.parries;
     this.play = d.play;
     this.hasGlider = d.hasGlider;
+    this.ending = d.ending ?? "none";
     this.shrine = d.flags.shrine ?? 0;
     for (const id of d.dead) {
       const e = this.enemies.find((x) => x.id === id);
@@ -388,7 +391,7 @@ export class GameSim {
       discovered: [...this.discovered], flags: { ...this.flags, shrine: this.shrine },
       mirrors: [...this.mirrorOrder], gears: [...this.gears], mirrorSolved: this.mirrorSolved, gearSolved: this.gearSolved,
       spawnX: this.spawn.x, spawnZ: this.spawn.z, time: this.time, kills: this.kills, deaths: this.deaths,
-      parries: this.parries, play: this.play, hasGlider: this.hasGlider,
+      parries: this.parries, play: this.play, hasGlider: this.hasGlider, ending: this.ending,
     };
   }
 
@@ -397,10 +400,12 @@ export class GameSim {
     if (this.toasts.length > 4) this.toasts.shift();
   }
 
-  save(): void {
+  save(quiet = false): void {
     writeSave(this.toSave());
-    this.saveFlash = 1.4;
-    this.toast("حُفظ التقدّم", "Progress saved");
+    if (!quiet) {
+      this.saveFlash = 1.4;
+      this.toast("حُفظ التقدّم", "Progress saved");
+    }
     this.poke(true);
   }
 
@@ -587,11 +592,7 @@ export class GameSim {
     const light = this.pressed("KeyJ") || this.pulses.attack;
     const heavy = this.pressed("KeyK") || this.pulses.heavy;
     const parry = this.pressed("KeyF") || this.pulses.parry;
-    const inter = this.pressed("KeyE") === false && (this.pressed("KeyF") ? false : this.pressed("KeyR"));
-    // interact is E, but E also yaws camera if held. Edge on KeyE is interact; yaw uses hold. Conflict.
-    // Use only the edge for interact and remove E from yaw. Yaw is Q and mouse.
     const interact = this.pressed("KeyE") || this.pulses.interact;
-    void inter;
 
     if (moving && p.attackT <= 0 && !p.grapple) {
       p.yaw = dampAngle(p.yaw, yawFromDir(wish.x, wish.z), 12, dt);
@@ -617,7 +618,8 @@ export class GameSim {
     if (parry && p.energy > 8) {
       p.parryT = 0.16 + (this.skills.guard ?? 0) * 0.045;
       p.energy -= 8;
-      p.attackT = Math.max(p.attackT, 0.18);
+      p.attackKind = "none";
+      p.attackT = Math.max(p.attackT, 0.2);
     }
     if (light && p.attackT <= 0) this.swing("light");
     if (heavy && p.attackT <= 0) this.swing("heavy");
@@ -643,7 +645,13 @@ export class GameSim {
 
     const water = WATERS.find((w) => Math.hypot(p.x - w.x, p.z - w.z) < w.r && terrainHeight(p.x, p.z) < w.y + 0.2);
     p.swimming = !!water && water.kind === "water" && p.y < water.y + 0.15 && !p.climbing;
-    if (water && water.kind === "lava" && p.y < water.y + 0.4) this.hurt(16 * dt * 8, true);
+    if (water && water.kind === "lava" && p.y < water.y + 0.4) {
+      this.burn -= dt;
+      if (this.burn <= 0) {
+        this.burn = 0.45;
+        this.hurt(14, true);
+      }
+    }
 
     if (p.grapple) {
       const g = p.grapple;
@@ -660,12 +668,26 @@ export class GameSim {
         p.vy = 6;
       }
     } else if (p.climbing) {
-      const up = mz;
-      p.vy = up * 4.2;
-      p.vx *= 0.8;
-      p.vz *= 0.8;
-      p.energy = Math.max(0, p.energy - 6 * dt);
-      if (jumpEdge || p.energy <= 0) p.climbing = false;
+      const support = this.climbSupport();
+      if (!support) {
+        p.climbing = false;
+      } else if (p.y >= support.top - 0.08) {
+        p.y = support.top;
+        p.vy = 0;
+        p.vx = 0;
+        p.vz = 0;
+        p.climbing = false;
+        p.grounded = true;
+      } else {
+        p.vy = mz * 4.2;
+        p.vx *= 0.8;
+        p.vz *= 0.8;
+        p.energy = Math.max(0, p.energy - 6 * dt);
+        if (jumpEdge || p.energy <= 0 || mz < -0.2) {
+          p.climbing = false;
+          if (jumpEdge) p.vy = 6;
+        }
+      }
     } else if (p.swimming && water) {
       p.vx = wish.x * 4.2;
       p.vz = wish.z * 4.2;
@@ -696,10 +718,11 @@ export class GameSim {
           p.energy -= glideDrain * dt;
         } else p.gliding = false;
         p.vy -= (kingdomAt(p.x, p.z) === "twilight" ? 12 : GRAV) * dt;
+        if (p.vy < -28) p.vy = -28;
       }
     }
 
-    if (p.attackT > 0.12 && p.attackT < 0.22) this.meleeTick();
+    if ((p.attackKind === "light" || p.attackKind === "heavy") && p.attackT > 0.12 && p.attackT < 0.22) this.meleeTick();
 
     p.x += p.vx * dt;
     p.z += p.vz * dt;
@@ -722,23 +745,26 @@ export class GameSim {
     this.scanNear();
     this.scanReach();
     this.scanDiscover();
+    this.reconcileQuests();
     if (p.hp <= 0) this.die();
     this.followCam(dt, false);
-    if (Math.floor(this.play) % 45 === 0 && this.play - dt < Math.floor(this.play) && this.play > 2) this.save();
+    if (Math.floor(this.play) % 45 === 0 && this.play - dt < Math.floor(this.play) && this.play > 2) this.save(true);
   }
 
   private solveWalls(): void {
     const p = this.player;
     const foot = p.y;
     const head = p.y + 1.65;
+    let wantClimb = false;
+    const into = this.down("KeyW") || this.down("ArrowUp") || this.stick.y > 0.35;
     for (const b of BLOCKS) {
       if (b.solid === false) continue;
       const top = b.base + b.h;
       if (head < b.base + 0.2 || foot > top - 0.35) continue;
       if (!insideBlock(p.x, p.z, b, 0.36)) continue;
-      if (b.climb && (this.down("KeyW") || this.down("ArrowUp") || this.stick.y > 0.4)) {
-        p.climbing = true;
-        return;
+      if (b.climb && into) {
+        wantClimb = true;
+        continue;
       }
       let dx = p.x - b.x;
       let dz = p.z - b.z;
@@ -758,12 +784,38 @@ export class GameSim {
       if (px < pz) p.x += Math.sign(dx || 1) * px;
       else p.z += Math.sign(dz || 1) * pz;
     }
+    if (wantClimb) p.climbing = true;
     p.x = clamp(p.x, -340, 340);
     p.z = clamp(p.z, -340, 340);
     if (p.x < -190 && p.z > -30 && p.z < 40 && p.y > 9.4) {
       p.y = 9.4;
       if (p.vy > 0) p.vy = 0;
     }
+  }
+
+  private climbSupport(): { top: number } | null {
+    const p = this.player;
+    let climbTop = -999;
+    let found = false;
+    for (const b of BLOCKS) {
+      if (!b.climb || b.solid === false) continue;
+      if (!insideBlock(p.x, p.z, b, 0.55)) continue;
+      const cap = b.base + b.h;
+      if (p.y > cap + 1.8 || p.y + 1.8 < b.base) continue;
+      if (cap > climbTop) {
+        climbTop = cap;
+        found = true;
+      }
+    }
+    if (!found) return null;
+    let top = climbTop;
+    for (const b of BLOCKS) {
+      if (b.solid === false) continue;
+      if (!insideBlock(p.x, p.z, b, 0.15)) continue;
+      const cap = b.base + b.h;
+      if (b.base >= climbTop - 0.45 && cap > top && cap < climbTop + 3) top = cap;
+    }
+    return { top };
   }
 
   private solveGround(): void {
@@ -953,7 +1005,7 @@ export class GameSim {
       if (Math.random() < 0.2) this.inv.dust = (this.inv.dust ?? 0) + 1;
       this.grantXp(ARCH[e.arch].xp);
       this.toast(e.arch.startsWith("boss") ? "سقط الحارس" : "أُسقط الخصم", e.arch.startsWith("boss") ? "The warden fell" : "Foe down");
-      this.onAdvance(applyEvent(this.quests, { type: "defeat", tag: e.tag }, this.inv, [...this.discovered]));
+      this.onAdvance(applyEvent(this.quests, { type: "defeat", tag: e.tag, id: e.id }, this.inv, [...this.discovered]));
     }
   }
 
@@ -1204,25 +1256,26 @@ export class GameSim {
       e.ai = "wander";
       e.phase = 1;
     }
-    this.toast("عدت إلى آخر مسلة", "Returned to the last obelisk");
+    this.toast("عدت إلى آخر نقطة", "Returned to the last point");
     this.poke(true);
   }
 
   private scanNear(): void {
     const p = this.player;
     let best: Obj | null = null;
-    let bestD = 2.4;
+    let bestD = 99;
     for (const o of this.objects) {
       if (o.used && o.kind !== "travel" && o.kind !== "shop" && o.kind !== "craft" && o.kind !== "puzzle" && o.kind !== "well" && o.kind !== "spring") continue;
+      const reach = Math.max(o.r, 1.7);
       const d = Math.hypot(o.x - p.x, o.z - p.z);
-      if (d < bestD) {
+      if (d <= reach && d < bestD) {
         best = o;
         bestD = d;
       }
     }
     for (const n of this.npcSpots()) {
       const d = Math.hypot(n.x - p.x, n.z - p.z);
-      if (d < bestD) {
+      if (d <= 2.3 && d < bestD) {
         bestD = d;
         best = { id: `npc:${n.id}`, tag: "npc", x: n.x, z: n.z, y: 0, r: 2, ar: n.ar, en: n.en, kind: "talk", npc: n.id, used: false };
       }
@@ -1303,6 +1356,7 @@ export class GameSim {
     const idx = Number(idxS);
     if (kind === "mirror") {
       if (this.mirrorSolved) {
+        this.onAdvance(applyEvent(this.quests, { type: "puzzle", id: "mirrors" }, this.inv, [...this.discovered]));
         this.toast("المرايا هادئة", "The mirrors are still");
         return;
       }
@@ -1321,10 +1375,15 @@ export class GameSim {
         this.toast("الترتيب انكسر", "The order breaks");
       }
     } else if (kind === "gear") {
-      if (this.gearSolved) return;
+      if (this.gearSolved) {
+        this.onAdvance(applyEvent(this.quests, { type: "puzzle", id: "gears" }, this.inv, [...this.discovered]));
+        this.toast("التروس تذكّرت", "The gears remember");
+        return;
+      }
       this.gears[idx] = (this.gears[idx] + 1) % 3;
       const names = ["قمر", "نار", "نخلة"];
-      this.toast(names[this.gears[idx]] ?? "", ["Moon", "Fire", "Palm"][this.gears[idx]] ?? "");
+      const ens = ["Moon", "Fire", "Palm"];
+      this.toast(`ترس ${idx + 1}: ${names[this.gears[idx]] ?? ""}`, `Gear ${idx + 1}: ${ens[this.gears[idx]] ?? ""}`);
       if (this.gears[0] === 2 && this.gears[1] === 0 && this.gears[2] === 1) {
         this.gearSolved = true;
         this.onAdvance(applyEvent(this.quests, { type: "puzzle", id: "gears" }, this.inv, [...this.discovered]));
@@ -1401,6 +1460,7 @@ export class GameSim {
       this.panel = "map";
     }
     this.onAdvance(syncHave(this.quests, this.inv));
+    this.reconcileQuests();
     if (choice.next && DIALOGUES[this.dialogue?.npc ?? ""]?.[choice.next]) {
       if (this.dialogue) this.dialogue.node = choice.next;
     } else if (choice.act !== "shop" && choice.act !== "craft" && choice.act !== "travel") {
@@ -1470,7 +1530,7 @@ export class GameSim {
     this.recompute();
     this.toast(`أُنجزت: ${def.ar}`, `Done: ${def.en}`);
     if (id === "q_lost") this.toast("انفتح ختم الشفق", "The twilight seal opens");
-    this.save();
+    this.save(true);
   }
 
   addItem(id: string, n: number): void {
@@ -1523,10 +1583,14 @@ export class GameSim {
     if (it.kind === "weapon") this.weapon = id;
     if (it.kind === "armor") this.armor = id;
     if (it.kind === "consume") {
-      this.inv[id] -= 1;
-      if (it.heal) this.player.hp = Math.min(this.player.maxHp, this.player.hp + it.heal);
-      if (it.buff) this.buffT = Math.max(this.buffT, it.buff);
-      if (id === "bomb") this.useBomb();
+      if ((this.inv[id] ?? 0) <= 0) return;
+      if (id === "bomb") {
+        this.useBomb();
+      } else {
+        this.inv[id] -= 1;
+        if (it.heal) this.player.hp = Math.min(this.player.maxHp, this.player.hp + it.heal);
+        if (it.buff) this.buffT = Math.max(this.buffT, it.buff);
+      }
     }
     this.audio.blip();
     this.poke(true);
@@ -1563,10 +1627,6 @@ export class GameSim {
     };
     const s = spots[id];
     if (!s) return;
-    if (id === "twilight" && this.crystalCount() < 5) {
-      this.toast("الختم ما زال مقفلًا", "The seal is still shut");
-      return;
-    }
     this.player.x = s[0];
     this.player.z = s[1];
     this.player.y = terrainHeight(s[0], s[1]) + 0.2;
@@ -1577,6 +1637,58 @@ export class GameSim {
     this.cam.z = s[1] + 8;
     this.save();
     this.poke(true);
+  }
+
+  private objectiveOpen(type: "defeat" | "interact" | "puzzle" | "discover", key: string): { counts: Record<string, number>; k: string } | null {
+    for (const def of QUESTS) {
+      const q = this.quests[def.id];
+      if (!q || q.status !== "active") continue;
+      const obj = def.objectives[q.step];
+      if (!obj || obj.type !== type) continue;
+      if (type === "defeat" && obj.type === "defeat" && obj.tag !== key) continue;
+      if (type === "interact" && obj.type === "interact" && obj.tag !== key) continue;
+      if (type === "puzzle" && obj.type === "puzzle" && obj.id !== key) continue;
+      const k = type === "defeat" ? `defeat:${key}` : type === "interact" ? `interact:${key}` : type;
+      return { counts: q.counts, k };
+    }
+    return null;
+  }
+
+  private replayAllowed(counts: Record<string, number>, k: string): boolean {
+    const hasIds = Object.keys(counts).some((key) => key.startsWith(`${k}:`));
+    return (counts[k] ?? 0) === 0 || hasIds;
+  }
+
+  private reconcileQuests(): void {
+    const disc = [...this.discovered];
+    if (this.mirrorSolved) {
+      const open = this.objectiveOpen("puzzle", "mirrors");
+      if (open) this.onAdvance(applyEvent(this.quests, { type: "puzzle", id: "mirrors" }, this.inv, disc));
+    }
+    if (this.gearSolved) {
+      const open = this.objectiveOpen("puzzle", "gears");
+      if (open) this.onAdvance(applyEvent(this.quests, { type: "puzzle", id: "gears" }, this.inv, disc));
+    }
+    for (const o of this.objects) {
+      if (!o.used) continue;
+      if (o.kind === "travel" || o.kind === "shop" || o.kind === "craft" || o.kind === "puzzle") continue;
+      const open = this.objectiveOpen("interact", o.tag);
+      if (!open || !this.replayAllowed(open.counts, open.k)) continue;
+      this.onAdvance(applyEvent(this.quests, { type: "interact", tag: o.tag, id: o.id }, this.inv, disc));
+    }
+    const tags = new Set(this.enemies.filter((e) => !e.alive && e.arch !== "trainer").map((e) => e.tag));
+    for (const tag of tags) {
+      const open = this.objectiveOpen("defeat", tag);
+      if (!open || !this.replayAllowed(open.counts, open.k)) continue;
+      for (const e of this.enemies) {
+        if (e.alive || e.tag !== tag || e.arch === "trainer") continue;
+        this.onAdvance(applyEvent(this.quests, { type: "defeat", tag, id: e.id }, this.inv, disc));
+      }
+    }
+    if (this.quests.s_map?.status === "active") {
+      this.onAdvance(applyEvent(this.quests, { type: "discover", kingdom: "map" }, this.inv, disc));
+    }
+    this.onAdvance(syncHave(this.quests, this.inv));
   }
 
   chooseEnding(kind: "seal" | "share"): void {
