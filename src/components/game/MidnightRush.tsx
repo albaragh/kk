@@ -76,6 +76,9 @@ export default function MidnightRush() {
         className="h-full w-full"
         dpr={dpr}
         gl={{ antialias: quality !== "low", powerPreference: "high-performance", alpha: false }}
+        onCreated={({ gl }) => {
+          gl.toneMappingExposure = 1.28;
+        }}
         camera={{ fov: 62, near: 0.15, far: 900, position: [24, 18, 48] }}
       >
         <GameScene />

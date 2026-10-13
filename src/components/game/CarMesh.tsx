@@ -38,7 +38,7 @@ export function CarView({ id }: { id: string }) {
         opacity: 0.78,
       }),
       dark: new THREE.MeshStandardMaterial({ color: "#14161a", metalness: 0.3, roughness: 0.6 }),
-      glow: new THREE.MeshStandardMaterial({ color: glow, emissive: glow, emissiveIntensity: 0.8 }),
+      glow: new THREE.MeshStandardMaterial({ color: glow, emissive: glow, emissiveIntensity: 2.4 }),
     };
   }, [paint, accent, glow]);
 
@@ -63,7 +63,7 @@ export function CarView({ id }: { id: string }) {
     shell.current.rotation.set(b.pitch, 0, -b.roll);
     const night = sim.timeOfDay < 0.22 || sim.timeOfDay > 0.78 ? 1 : 0.35;
     if (brake.current) brake.current.emissiveIntensity = b.braking ? 2.4 : 0.25 + night * 0.2;
-    if (beam.current) beam.current.emissiveIntensity = 0.6 + night * 1.6;
+    if (beam.current) beam.current.emissiveIntensity = 2.2 + night * 2.6;
     spins.current.forEach((wheel, i) => {
       if (!wheel) return;
       const front = i < 2;
@@ -127,11 +127,11 @@ export function CarView({ id }: { id: string }) {
         </mesh>
         <mesh position={[W * 0.34, H * 0.36, L * 0.42]}>
           <boxGeometry args={[0.22, 0.1, 0.12]} />
-          <meshStandardMaterial ref={beam} color="#fff4d2" emissive="#fff1c4" emissiveIntensity={1.4} />
+          <meshStandardMaterial ref={beam} color="#fff8dc" emissive="#fff3c4" emissiveIntensity={3.2} />
         </mesh>
         <mesh position={[-W * 0.34, H * 0.36, L * 0.42]}>
-          <boxGeometry args={[0.22, 0.1, 0.12]} />
-          <meshStandardMaterial color="#fff4d2" emissive="#fff1c4" emissiveIntensity={1.4} />
+          <boxGeometry args={[0.28, 0.12, 0.16]} />
+          <meshStandardMaterial color="#fff8dc" emissive="#fff3c4" emissiveIntensity={3.2} />
         </mesh>
         <mesh position={[W * 0.36, H * 0.34, -L * 0.46]}>
           <boxGeometry args={[0.24, 0.08, 0.08]} />

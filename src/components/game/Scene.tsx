@@ -14,11 +14,11 @@ function nightAmount(t: number) {
 }
 
 const SKY = [
-  { t: 0, bg: "#070b16", fog: "#0a1020", sun: 0.08, amb: 0.28, sky: "#16243f", ground: "#1a120c" },
+  { t: 0, bg: "#1a2740", fog: "#31445e", sun: 0.72, amb: 0.86, sky: "#4d6588", ground: "#4a3b2c" },
   { t: 0.28, bg: "#e3926a", fog: "#e7b39a", sun: 0.9, amb: 0.52, sky: "#f0b89a", ground: "#6d5644" },
   { t: 0.5, bg: "#8ec8ef", fog: "#d5e4ee", sun: 1.3, amb: 0.66, sky: "#c5e6f8", ground: "#d9c7a2" },
   { t: 0.74, bg: "#c45a3a", fog: "#d98972", sun: 0.55, amb: 0.42, sky: "#e48a62", ground: "#3a2a28" },
-  { t: 1, bg: "#070b16", fog: "#0a1020", sun: 0.08, amb: 0.28, sky: "#16243f", ground: "#1a120c" },
+  { t: 1, bg: "#1a2740", fog: "#31445e", sun: 0.72, amb: 0.86, sky: "#4d6588", ground: "#4a3b2c" },
 ];
 
 function sampleSky(t: number) {
@@ -77,20 +77,21 @@ function Director() {
     if (!scene.fog) scene.fog = new THREE.Fog(fogC, 40, 420);
     const fog = scene.fog as THREE.Fog;
     fog.color.copy(fogC);
-    const far = sim.quality === "low" ? 250 : sim.quality === "med" ? 380 : 520;
-    fog.near = sim.rain ? 30 : 50;
-    fog.far = sim.rain ? far * 0.7 : far;
     const night = nightAmount(sim.timeOfDay);
+    const far = sim.quality === "low" ? 280 : sim.quality === "med" ? 420 : 560;
+    fog.near = sim.rain ? 48 : 90 + night * 30;
+    fog.far = sim.rain ? far * 0.75 : far;
     if (sun.current && amb.current && hemi.current) {
       const elev = Math.sin((sim.timeOfDay - 0.25) * Math.PI * 2);
-      sun.current.intensity = THREE.MathUtils.lerp(a.sun, b.sun, u) * (sim.rain ? 0.45 : 1);
-      sun.current.position.set(Math.cos(sim.timeOfDay * Math.PI * 2) * 90, Math.max(8, elev * 70 + 12), 30);
-      amb.current.intensity = THREE.MathUtils.lerp(a.amb, b.amb, u) * (sim.rain ? 0.75 : 1);
+      sun.current.intensity = THREE.MathUtils.lerp(a.sun, b.sun, u) * (sim.rain ? 0.55 : 1);
+      sun.current.color.set(night > 0.55 ? "#d5e4ff" : "#fff2d6");
+      sun.current.position.set(Math.cos(sim.timeOfDay * Math.PI * 2) * 90, Math.max(18, elev * 70 + 20), 30);
+      amb.current.intensity = THREE.MathUtils.lerp(a.amb, b.amb, u) * (sim.rain ? 0.85 : 1);
       mix(a.sky, b.sky, skyC);
       mix(a.ground, b.ground, gndC);
       hemi.current.color.copy(skyC);
       hemi.current.groundColor.copy(gndC);
-      hemi.current.intensity = 0.45 + (1 - night) * 0.3;
+      hemi.current.intensity = 1.05 + (1 - night) * 0.2;
     }
     const fx = -Math.sin(p.yaw);
     const fz = -Math.cos(p.yaw);
@@ -136,16 +137,19 @@ function Director() {
       spot.current.position.set(p.x + fx * 1.4, p.y + 0.55, p.z + fz * 1.4);
       target.current.position.set(p.x + fx * 24, p.y, p.z + fz * 24);
       spot.current.target = target.current;
-      spot.current.intensity = (night * 18 + 2) * (sim.quality === "low" ? 0 : 1);
+      spot.current.intensity = night * 48 + 16;
+      spot.current.angle = 0.72;
+      spot.current.distance = 130;
+      spot.current.decay = 1;
     }
   });
 
   return (
     <>
-      <ambientLight ref={amb} intensity={0.3} />
-      <hemisphereLight ref={hemi} args={["#16243f", "#1a120c", 0.5]} />
-      <directionalLight ref={sun} position={[40, 60, 20]} intensity={0.2} />
-      <spotLight ref={spot} angle={0.55} penumbra={0.45} distance={70} color="#fff3d2" decay={2} />
+      <ambientLight ref={amb} intensity={0.7} />
+      <hemisphereLight ref={hemi} args={["#4d6588", "#4a3b2c", 1.05]} />
+      <directionalLight ref={sun} position={[40, 60, 20]} intensity={0.7} color="#d5e4ff" />
+      <spotLight ref={spot} angle={0.72} penumbra={0.4} distance={130} color="#fff6d4" decay={1} intensity={40} />
       <object3D ref={target} />
     </>
   );

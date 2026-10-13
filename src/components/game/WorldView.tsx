@@ -212,12 +212,12 @@ export function WorldView() {
   const rock = useMemo(() => new THREE.DodecahedronGeometry(1, 0), []);
   const mat = useMemo(
     () => ({
-      tower: new THREE.MeshStandardMaterial({ color: "#8e97a3", roughness: 0.45, metalness: 0.35, emissive: "#ffbf70", emissiveMap: windows, emissiveIntensity: 0.45 }),
-      stone: new THREE.MeshStandardMaterial({ color: "#cbb892", roughness: 0.88, metalness: 0.05 }),
-      industrial: new THREE.MeshStandardMaterial({ color: "#6d7370", roughness: 0.8, metalness: 0.2 }),
-      neon: new THREE.MeshStandardMaterial({ color: "#161b24", roughness: 0.4, metalness: 0.4, emissive: "#1ec9b8", emissiveMap: windows, emissiveIntensity: 0.55 }),
-      lamp: new THREE.MeshStandardMaterial({ color: "#2a241c", roughness: 0.6 }),
-      head: new THREE.MeshStandardMaterial({ color: "#fff1c9", emissive: "#ffd27a", emissiveIntensity: 1.3 }),
+      tower: new THREE.MeshStandardMaterial({ color: "#b7c0cc", roughness: 0.42, metalness: 0.28, emissive: "#ffc98a", emissiveMap: windows, emissiveIntensity: 1.25 }),
+      stone: new THREE.MeshStandardMaterial({ color: "#e4d2ae", roughness: 0.82, metalness: 0.04 }),
+      industrial: new THREE.MeshStandardMaterial({ color: "#8d948f", roughness: 0.75, metalness: 0.16 }),
+      neon: new THREE.MeshStandardMaterial({ color: "#243040", roughness: 0.38, metalness: 0.35, emissive: "#3ef0dc", emissiveMap: windows, emissiveIntensity: 1.7 }),
+      lamp: new THREE.MeshStandardMaterial({ color: "#3a3228", roughness: 0.55 }),
+      head: new THREE.MeshStandardMaterial({ color: "#fff6d0", emissive: "#ffe08a", emissiveIntensity: 4.2 }),
       palm: new THREE.MeshStandardMaterial({ color: "#6a4a32", roughness: 0.9 }),
       crown: new THREE.MeshStandardMaterial({ color: "#2f6b45", roughness: 0.75 }),
       dune: new THREE.MeshStandardMaterial({ color: "#d8c08a", roughness: 1 }),
@@ -232,7 +232,7 @@ export function WorldView() {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -40]} receiveShadow>
         <planeGeometry args={[1400, 1200]} />
-        <meshStandardMaterial color="#17160f" roughness={1} metalness={0} />
+        <meshStandardMaterial color="#3a342c" emissive="#221c16" emissiveIntensity={0.45} roughness={1} metalness={0} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[20, 0.02, 370]}>
         <planeGeometry args={[1100, 220]} />
@@ -243,7 +243,7 @@ export function WorldView() {
         <meshStandardMaterial color="#143e48" roughness={0.25} metalness={0.35} />
       </mesh>
       <mesh geometry={roads} receiveShadow>
-        <meshStandardMaterial color="#2c3038" roughness={0.9} metalness={0.08} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#6a7384" emissive="#2a3142" emissiveIntensity={0.55} roughness={0.82} metalness={0.05} side={THREE.DoubleSide} />
       </mesh>
       <Instanced items={towers} geometry={box} material={mat.tower} />
       <Instanced items={stone} geometry={box} material={mat.stone} />
@@ -265,7 +265,7 @@ export function WorldView() {
           </mesh>
           <mesh position={[0, 4.4, 0]}>
             <planeGeometry args={[4.2, 2.1]} />
-            <meshStandardMaterial map={signs.get(p.text ?? "")} emissive="#ffffff" emissiveMap={signs.get(p.text ?? "")} emissiveIntensity={0.25} roughness={0.6} side={THREE.DoubleSide} />
+            <meshStandardMaterial map={signs.get(p.text ?? "")} emissive="#fff4d2" emissiveMap={signs.get(p.text ?? "")} emissiveIntensity={0.95} roughness={0.45} side={THREE.DoubleSide} />
           </mesh>
         </group>
       ))}
